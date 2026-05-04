@@ -65,8 +65,9 @@ export class CameraController{
           this.cameraLookAt[2] -= 0.1 * Math.cos(this.theta * Math.PI / 180) * Math.cos(this.theta1 * Math.PI / 180);
       }else if(keys["a"]){
 
-          const new_theta = this.theta + 90;
-          const new_theta1 = 0;
+          const new_theta = this.theta;
+          const new_theta1 = this.theta1;
+
           this.cameraPos[0] += 0.1 * Math.sin(new_theta * Math.PI / 180) * Math.cos(new_theta1 * Math.PI / 180);
           this.cameraPos[1] += 0.1 * Math.sin((new_theta1 * Math.PI) / 180);
           this.cameraPos[2] += 0.1 * Math.cos(new_theta * Math.PI / 180) * Math.cos(new_theta1 * Math.PI / 180);
@@ -74,7 +75,8 @@ export class CameraController{
           this.cameraLookAt[0] += 0.1 * Math.sin(new_theta * Math.PI / 180) * Math.cos(new_theta1 * Math.PI / 180);
           this.cameraLookAt[1] += 0.1 * Math.sin((new_theta1 * Math.PI) / 180);
           this.cameraLookAt[2] += 0.1 * Math.cos(new_theta * Math.PI / 180) * Math.cos(new_theta1 * Math.PI / 180);
-      }else if(keys["d"]){
+
+        }else if(keys["d"]){
 
           const new_theta = this.theta - 90;
           const new_theta1 = 0;

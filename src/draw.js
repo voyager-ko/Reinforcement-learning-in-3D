@@ -30,7 +30,7 @@ export class DrawingRoad {
       this.controlPoints,
       false,
       "centripetal",
-      0.32
+      0.5
     );
 
     this.centerSamples = this.curve.getSpacedPoints(this.sampleCount);
@@ -74,14 +74,30 @@ export class DrawingRoad {
         tangent.x
       ).normalize();
 
+      // 急カーブ時の自己交差を防ぐため、曲率半径に応じて道幅を制限する
+      const span = Math.min(8, index, this.centerSamples.length - 1 - index);
+      let halfWidth = this.roadHalf;
+      if (span >= 2) {
+        const t0 = this.tangentAt(index - span);
+        const t1 = this.tangentAt(index + span);
+        const cosAngle = Math.max(-1, Math.min(1, t0.x * t1.x + t0.z * t1.z));
+        const angle = Math.acos(cosAngle);
+        const arcLen = this.centerSamples[index - span]
+          .distanceTo(this.centerSamples[index + span]);
+        if (angle > 0.02 && arcLen > 0.01) {
+          const radius = arcLen / angle;
+          halfWidth = Math.min(halfWidth, radius * 0.78);
+        }
+      }
+
       const left = center
         .clone()
-        .addScaledVector(normal, this.roadHalf)
+        .addScaledVector(normal, halfWidth)
         .setY(0.02);
 
       const right = center
         .clone()
-        .addScaledVector(normal, -this.roadHalf)
+        .addScaledVector(normal, -halfWidth)
         .setY(0.02);
 
       vertices.push(
