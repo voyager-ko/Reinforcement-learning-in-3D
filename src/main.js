@@ -7,11 +7,8 @@ import { LearningStatusUI } from "./status.js";
 import { CameraController } from "./cameraController.js";
 
 
-// イベントの管理
 const keys = {};
 
-//// 初期化
-// レンダラーを作成
 const renderer = new THREE.WebGPURenderer({
   canvas: document.querySelector("canvas"),
 });
@@ -19,31 +16,16 @@ renderer.setPixelRatio(devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// シーンを作成
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
-// カメラを作成
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 let camera_controller = new CameraController();
 
-// 平行光源を作成
 const light = new THREE.DirectionalLight(0xFFFFFF, 3);
 scene.add(light);
 
-
-// 道の準備
-let road = [[0, 0]];
-const floor_group = new THREE.Group();
-scene.add(floor_group);
-
-const controlPoints = [
-  new THREE.Vector3(-10, 0, 15),
-  new THREE.Vector3(-4, 0, 5),
-  new THREE.Vector3(-2, 0, -5),
-  new THREE.Vector3(-5, 0, -15)
-];
-
+// 道のマテリアル (再利用のためモジュール上位に定義)
 const roadMaterial = new THREE.MeshStandardMaterial({
   color: 0xFFFFFF,
   roughness: 0.72,
@@ -77,24 +59,42 @@ const goalMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.2,
 });
 
-const drawingRoad = new DrawingRoad({
-  controlPoints,
-  roadWidth: 4.5,
-  sampleCount: 440,
-  material: roadMaterial,
-  edgeMaterial: roadEdgeMaterial,
-  centerLineMaterial,
-  startMaterial,
-  goalMaterial,
-});
-const roadGroup = drawingRoad.create();
-scene.add(roadGroup);
+// 道路オブジェクト (buildRoad で差し替え可能)
+let drawingRoad = null;
+let roadGroup = null;
+
+function buildRoad(controlPoints) {
+  if (roadGroup) scene.remove(roadGroup);
+
+  drawingRoad = new DrawingRoad({
+    controlPoints,
+    roadWidth: 7.5,
+    sampleCount: 440,
+    material: roadMaterial,
+    edgeMaterial: roadEdgeMaterial,
+    centerLineMaterial,
+    startMaterial,
+    goalMaterial,
+  });
+
+  roadGroup = drawingRoad.create();
+  scene.add(roadGroup);
+}
+
+// 迷路ビルダー側HTMLから呼ばれるブリッジ
+// plainPoints: [{x, y, z}, ...] の配列
+window.rebuildRoad = (plainPoints) => {
+  const controlPoints = plainPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  buildRoad(controlPoints);
+  const { count, alpha, gamma } = readSettings();
+  buildAgents(count, alpha, gamma, false);
+};
+
 
 const learningUI = new LearningStatusUI({
   title: "ロボット学習状況",
 });
 
-// 車のカラーパレット (最大8台分)
 const CAR_COLORS = [
   0xffd166,
   0xff6b9d,
@@ -193,16 +193,11 @@ document.getElementById("mode-toggle").addEventListener("click", () => {
   setTestMode(!isTestMode);
 });
 
-// 初期構築
-buildAgents(1, 0.12, 0.97);
-
-// 台数・設定を変更（学習を引き継ぐ）
 document.getElementById("settings-apply").addEventListener("click", () => {
   const { count, alpha, gamma } = readSettings();
   buildAgents(count, alpha, gamma, true);
 });
 
-// 学習をリセットして再スタート
 document.getElementById("settings-reset").addEventListener("click", () => {
   const { count, alpha, gamma } = readSettings();
   buildAgents(count, alpha, gamma, false);
@@ -235,15 +230,23 @@ window.addEventListener("keyup", (event) => {
 
 
 //// 開始！！
-function tick() {
-    renderer.render(scene, camera);
+buildRoad([
+  new THREE.Vector3(-10, 0, 15),
+  new THREE.Vector3(-4, 0, 5),
+  new THREE.Vector3(-2, 0, -5),
+  new THREE.Vector3(-5, 0, -15),
+]);
+buildAgents(1, 0.12, 0.97);
 
-    if(camera_controller.isKeyDonw === true){
-      camera_controller.keyMove(keys);
-    }
-    agents.forEach(agent => agent.update());
-    learningUI.update(getAggregatedInfo());
-    camera_controller.update(camera);
+function tick() {
+  renderer.render(scene, camera);
+
+  if(camera_controller.isKeyDonw === true){
+    camera_controller.keyMove(keys);
+  }
+  agents.forEach(agent => agent.update());
+  learningUI.update(getAggregatedInfo());
+  camera_controller.update(camera);
 }
 
 renderer.setAnimationLoop(tick);

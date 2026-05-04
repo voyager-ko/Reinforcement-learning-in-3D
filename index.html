@@ -2,144 +2,232 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-
   <title>Hand Skeleton</title>
 
   <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.webgpu.js",
-          "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.webgpu.js"
-        }
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.webgpu.js",
+        "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.webgpu.js"
       }
-    </script>
-    <style>
-        html, body , #app{
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-          width: 100%;
-          height: 100%;
-        }
+    }
+  </script>
 
-        canvas {
-          display: block;
-        }
+  <style>
+    html, body, #app {
+      margin: 0; padding: 0; overflow: hidden;
+      width: 100%; height: 100%;
+    }
+    canvas { display: block; }
 
-        #settings-panel {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          width: 260px;
-          padding: 16px;
-          border-radius: 14px;
-          background: rgba(20, 24, 28, 0.86);
-          color: #ffffff;
-          font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-          z-index: 1000;
-          backdrop-filter: blur(8px);
-        }
+    /* ===== 設定パネル ===== */
+    #settings-panel {
+      position: fixed;
+      top: 20px; right: 20px;
+      width: 260px;
+      padding: 16px;
+      border-radius: 14px;
+      background: rgba(20, 24, 28, 0.86);
+      color: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    #settings-panel h2 {
+      font-size: 16px; margin: 0 0 14px 0; font-weight: 700;
+    }
+    .setting-row { margin-bottom: 14px; }
+    .setting-label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; margin-bottom: 6px;
+    }
+    .setting-label span:first-child { color: rgba(255,255,255,0.72); }
+    .setting-value { font-weight: 700; color: #61d7ff; min-width: 36px; text-align: right; }
+    .setting-row input[type="range"] { width: 100%; accent-color: #61d7ff; cursor: pointer; }
 
-        #settings-panel h2 {
-          font-size: 16px;
-          margin: 0 0 14px 0;
-          font-weight: 700;
-        }
+    .settings-btn {
+      width: 100%; margin-top: 8px; padding: 10px 0;
+      border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: background 0.15s; font-family: inherit;
+    }
+    #settings-apply  { background: rgba(97,215,255,0.18); color: #61d7ff; }
+    #settings-apply:hover  { background: rgba(97,215,255,0.32); }
+    #settings-apply:active { background: rgba(97,215,255,0.48); }
+    #settings-reset  { background: rgba(255,92,107,0.14); color: #ff5c6b; }
+    #settings-reset:hover  { background: rgba(255,92,107,0.26); }
+    #settings-reset:active { background: rgba(255,92,107,0.42); }
 
-        .setting-row {
-          margin-bottom: 14px;
-        }
+    #mode-toggle {
+      width: 100%; padding: 11px 0;
+      border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      font-family: inherit; margin-bottom: 14px;
+    }
+    #mode-toggle.mode-training { background: rgba(92,242,173,0.15); color: #5cf2ad; }
+    #mode-toggle.mode-training:hover { background: rgba(92,242,173,0.28); }
+    #mode-toggle.mode-test { background: rgba(246,211,95,0.18); color: #f6d35f; }
+    #mode-toggle.mode-test:hover { background: rgba(246,211,95,0.32); }
 
-        .setting-label {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 13px;
-          margin-bottom: 6px;
-        }
+    #maze-open-btn {
+      width: 100%; margin-top: 8px; padding: 10px 0;
+      border: none; border-radius: 10px;
+      background: rgba(169,255,107,0.14); color: #a8ff6b;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: background 0.15s; font-family: inherit;
+    }
+    #maze-open-btn:hover { background: rgba(169,255,107,0.28); }
 
-        .setting-label span:first-child {
-          color: rgba(255, 255, 255, 0.72);
-        }
+    /* ===== 迷路モーダル ===== */
+    #maze-modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    #maze-modal.hidden { display: none; }
 
-        .setting-value {
-          font-weight: 700;
-          color: #61d7ff;
-          min-width: 36px;
-          text-align: right;
-        }
+    .maze-panel {
+      background: #13131f;
+      border: 1px solid #2a2a40;
+      border-radius: 18px;
+      padding: 24px;
+      width: min(480px, 96vw);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      color: #e0e0f0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .maze-panel h3 {
+      font-size: 18px; font-weight: 700; margin: 0 0 16px 0;
+      color: #00e5ff;
+    }
 
-        .setting-row input[type="range"] {
-          width: 100%;
-          accent-color: #61d7ff;
-          cursor: pointer;
-        }
+    /* モードボタン */
+    .maze-modes {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .maze-mode-btn {
+      flex: 1; padding: 8px 4px;
+      border: 2px solid #2a2a40;
+      border-radius: 10px;
+      background: transparent; color: #666680;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; font-family: inherit;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+    }
+    .maze-mode-btn .mi { font-size: 1.1rem; }
+    .maze-mode-btn:hover { color: #e0e0f0; background: #ffffff08; }
+    .maze-mode-btn.active[data-mode="start"] { border-color: #69ff47; color: #69ff47; background: #69ff4712; }
+    .maze-mode-btn.active[data-mode="goal"]  { border-color: #ff4081; color: #ff4081; background: #ff408112; }
+    .maze-mode-btn.active[data-mode="road"]  { border-color: #00e5ff; color: #00e5ff; background: #00e5ff12; }
+    .maze-mode-btn.active[data-mode="erase"] { border-color: #888;    color: #aaa;    background: #ffffff10; }
 
-        .settings-btn {
-          width: 100%;
-          margin-top: 8px;
-          padding: 10px 0;
-          border: none;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: background 0.15s;
-          font-family: inherit;
-        }
+    /* グリッド */
+    .maze-grid-wrap {
+      position: relative;
+      aspect-ratio: 1;
+      width: 100%; max-width: 380px;
+      margin: 0 auto 16px;
+    }
+    .maze-conn-svg {
+      position: absolute; inset: 8px;
+      pointer-events: none; z-index: 10;
+    }
+    .maze-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 6px;
+      width: 100%; height: 100%;
+      background: #0d0d14;
+      border: 1px solid #2a2a40;
+      border-radius: 14px;
+      padding: 8px;
+    }
+    .maze-cell {
+      position: relative;
+      border-radius: 7px;
+      background: #1e1e32;
+      border: 2px solid #1e1e38;
+      cursor: pointer;
+      transition: transform 0.1s;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none; overflow: hidden;
+    }
+    .maze-cell:active { transform: scale(0.92); }
+    .maze-cell.road  { background: #0a1a25; border-color: #00e5ff; box-shadow: 0 0 8px #00e5ff33; }
+    .maze-cell.start { background: #0a1f0a; border-color: #69ff47; box-shadow: 0 0 10px #69ff4744; }
+    .maze-cell.goal  { background: #1f0a10; border-color: #ff4081; box-shadow: 0 0 10px #ff408144; }
+    .maze-cell-lbl {
+      font-size: 11px; font-weight: 900; z-index: 1;
+      color: transparent;
+    }
+    .maze-cell.start .maze-cell-lbl { color: #69ff47; }
+    .maze-cell.goal  .maze-cell-lbl { color: #ff4081; }
 
-        #settings-apply {
-          background: rgba(97, 215, 255, 0.18);
-          color: #61d7ff;
-        }
+    /* 情報 */
+    .maze-info {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .maze-info-card {
+      flex: 1; background: #0d0d14;
+      border: 1px solid #2a2a40;
+      border-radius: 10px; padding: 10px;
+      text-align: center;
+    }
+    .maze-info-card .mv {
+      font-size: 1.2rem; font-weight: 700;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .maze-info-card .ml { font-size: 11px; color: #666680; margin-top: 2px; }
+    .maze-info-card.s .mv { color: #69ff47; }
+    .maze-info-card.r .mv { color: #00e5ff; }
+    .maze-info-card.g .mv { color: #ff4081; }
 
-        #settings-apply:hover  { background: rgba(97, 215, 255, 0.32); }
-        #settings-apply:active { background: rgba(97, 215, 255, 0.48); }
+    /* アクションボタン */
+    .maze-actions { display: flex; gap: 8px; }
+    .maze-btn {
+      flex: 1; padding: 11px;
+      border-radius: 10px; border: 1px solid #2a2a40;
+      background: #0d0d14; color: #e0e0f0;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .maze-btn:hover { background: #ffffff0d; }
+    .maze-btn.apply {
+      border-color: #00e5ff; color: #00e5ff;
+      box-shadow: 0 0 10px #00e5ff22;
+    }
+    .maze-btn.apply:hover { background: #00e5ff12; }
+    .maze-btn.cancel { border-color: #ff406055; color: #ff8099; }
+    .maze-btn.cancel:hover { background: #ff406015; }
 
-        #settings-reset {
-          background: rgba(255, 92, 107, 0.14);
-          color: #ff5c6b;
-        }
-
-        #settings-reset:hover  { background: rgba(255, 92, 107, 0.26); }
-        #settings-reset:active { background: rgba(255, 92, 107, 0.42); }
-
-        #mode-toggle {
-          width: 100%;
-          padding: 11px 0;
-          border: none;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: background 0.15s, color 0.15s;
-          font-family: inherit;
-          margin-bottom: 14px;
-        }
-
-        #mode-toggle.mode-training {
-          background: rgba(92, 242, 173, 0.15);
-          color: #5cf2ad;
-        }
-
-        #mode-toggle.mode-training:hover { background: rgba(92, 242, 173, 0.28); }
-
-        #mode-toggle.mode-test {
-          background: rgba(246, 211, 95, 0.18);
-          color: #f6d35f;
-        }
-
-        #mode-toggle.mode-test:hover { background: rgba(246, 211, 95, 0.32); }
-    </style>
+    /* トースト */
+    .maze-toast {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      text-align: center;
+      min-height: 38px;
+      background: rgba(255,92,107,0.12);
+      color: #ff5c6b;
+      transition: opacity 0.2s;
+    }
+    .maze-toast:empty { opacity: 0; }
+    .maze-toast.ok { background: rgba(92,242,173,0.12); color: #5cf2ad; }
+  </style>
 </head>
 <body>
-  <div class="camera-area">
   <canvas id="canvas"></canvas>
-  </div>
 
+  <!-- ===== 設定パネル ===== -->
   <div id="settings-panel">
     <h2>学習設定</h2>
+
     <button id="mode-toggle" class="mode-training">学習モード中（クリックでテストへ）</button>
 
     <div class="setting-row">
@@ -171,7 +259,260 @@
 
     <button id="settings-apply" class="settings-btn">台数・設定を変更（学習を引き継ぐ）</button>
     <button id="settings-reset"  class="settings-btn">学習をリセットして再スタート</button>
+    <button id="maze-open-btn">迷路を設定</button>
   </div>
+
+  <!-- ===== 迷路モーダル ===== -->
+  <div id="maze-modal" class="hidden">
+    <div class="maze-panel">
+      <h3>迷路を設定</h3>
+
+      <div class="maze-modes">
+        <button class="maze-mode-btn active" data-mode="start"><span class="mi">🟢</span>スタート</button>
+        <button class="maze-mode-btn" data-mode="goal"><span class="mi">🔴</span>ゴール</button>
+        <button class="maze-mode-btn" data-mode="road"><span class="mi">🔷</span>道を引く</button>
+        <button class="maze-mode-btn" data-mode="erase"><span class="mi">🧹</span>消す</button>
+      </div>
+
+      <div class="maze-grid-wrap">
+        <svg class="maze-conn-svg" id="mazeConnSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="maze-grid" id="mazeGrid"></div>
+      </div>
+
+      <div class="maze-info">
+        <div class="maze-info-card s"><div class="mv" id="mzStart">—</div><div class="ml">スタート</div></div>
+        <div class="maze-info-card r"><div class="mv" id="mzRoad">0</div><div class="ml">道のマス数</div></div>
+        <div class="maze-info-card g"><div class="mv" id="mzGoal">—</div><div class="ml">ゴール</div></div>
+      </div>
+
+      <div class="maze-actions">
+        <button class="maze-btn cancel" id="mazeCancelBtn">キャンセル</button>
+        <button class="maze-btn" id="mazeClearBtn">全リセット</button>
+        <button class="maze-btn apply" id="mazeApplyBtn">3Dに適用</button>
+      </div>
+
+      <div class="maze-toast" id="mazeToast"></div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    const ROWS = 5, COLS = 5;
+    const SPACING = 5; // グリッド1マス = 3Dワールド5ユニット
+
+    let mazeMode = 'start';
+    let mazeStart = null, mazeGoal = null;
+    let mazeCells = [];
+    let isDragging = false;
+
+    const modal   = document.getElementById('maze-modal');
+    const grid    = document.getElementById('mazeGrid');
+    const connSvg = document.getElementById('mazeConnSvg');
+    const toast   = document.getElementById('mazeToast');
+
+    // グリッド構築
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'maze-cell';
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+        const lbl = document.createElement('span');
+        lbl.className = 'maze-cell-lbl';
+        cell.appendChild(lbl);
+        grid.appendChild(cell);
+        mazeCells.push(cell);
+      }
+    }
+
+    function getCell(r, c) { return mazeCells[r * COLS + c]; }
+
+    function applyCell(cell) {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      if (mazeMode === 'start') {
+        if (mazeStart) {
+          mazeStart.classList.remove('start');
+          mazeStart.querySelector('.maze-cell-lbl').textContent = '';
+        }
+        cell.classList.remove('goal', 'road');
+        cell.classList.add('start');
+        cell.querySelector('.maze-cell-lbl').textContent = 'S';
+        if (mazeGoal === cell) mazeGoal = null;
+        mazeStart = cell;
+      } else if (mazeMode === 'goal') {
+        if (mazeGoal) {
+          mazeGoal.classList.remove('goal');
+          mazeGoal.querySelector('.maze-cell-lbl').textContent = '';
+        }
+        cell.classList.remove('start', 'road');
+        cell.classList.add('goal');
+        cell.querySelector('.maze-cell-lbl').textContent = 'G';
+        if (mazeStart === cell) mazeStart = null;
+        mazeGoal = cell;
+      } else if (mazeMode === 'road') {
+        if (cell.classList.contains('start') || cell.classList.contains('goal')) return;
+        cell.classList.add('road');
+      } else if (mazeMode === 'erase') {
+        if (cell === mazeStart) mazeStart = null;
+        if (cell === mazeGoal)  mazeGoal  = null;
+        cell.classList.remove('start', 'goal', 'road');
+        cell.querySelector('.maze-cell-lbl').textContent = '';
+      }
+      updateMazeInfo();
+      drawMazeConnections();
+    }
+
+    // モードボタン
+    document.querySelectorAll('.maze-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        mazeMode = btn.dataset.mode;
+        document.querySelectorAll('.maze-mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // セルイベント
+    mazeCells.forEach(cell => {
+      cell.addEventListener('mousedown', e => { e.preventDefault(); isDragging = true; applyCell(cell); });
+      cell.addEventListener('mouseenter', () => { if (isDragging && (mazeMode === 'road' || mazeMode === 'erase')) applyCell(cell); });
+      cell.addEventListener('touchstart', e => { e.preventDefault(); isDragging = true; applyCell(cell); }, { passive: false });
+      cell.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (el && el.classList.contains('maze-cell') && (mazeMode === 'road' || mazeMode === 'erase')) applyCell(el);
+      }, { passive: false });
+    });
+    document.addEventListener('mouseup', () => isDragging = false);
+    document.addEventListener('touchend', () => isDragging = false);
+
+    // 接続線 SVG
+    function drawMazeConnections() {
+      connSvg.innerHTML = '';
+      const active = mazeCells.filter(c => c.classList.contains('road') || c.classList.contains('start') || c.classList.contains('goal'));
+      const cW = 100 / COLS, cH = 100 / ROWS;
+      const drawn = new Set();
+      active.forEach(cell => {
+        const r = +cell.dataset.r, c = +cell.dataset.c;
+        [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([nr,nc]) => {
+          if (nr<0||nr>=ROWS||nc<0||nc>=COLS) return;
+          const nb = getCell(nr, nc);
+          if (!nb.classList.contains('road') && !nb.classList.contains('start') && !nb.classList.contains('goal')) return;
+          const key = [Math.min(r*COLS+c, nr*COLS+nc), Math.max(r*COLS+c, nr*COLS+nc)].join('-');
+          if (drawn.has(key)) return;
+          drawn.add(key);
+          const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+          line.setAttribute('x1', (c+0.5)*cW);
+          line.setAttribute('y1', (r+0.5)*cH);
+          line.setAttribute('x2', (nc+0.5)*cW);
+          line.setAttribute('y2', (nr+0.5)*cH);
+          line.setAttribute('stroke', '#00e5ff');
+          line.setAttribute('stroke-width', '2.5');
+          line.setAttribute('stroke-linecap', 'round');
+          line.setAttribute('opacity', '0.5');
+          connSvg.appendChild(line);
+        });
+      });
+    }
+
+    function updateMazeInfo() {
+      const lbl = r => ['A','B','C','D','E'][r];
+      document.getElementById('mzStart').textContent = mazeStart ? `${lbl(+mazeStart.dataset.r)}${+mazeStart.dataset.c+1}` : '—';
+      document.getElementById('mzGoal').textContent  = mazeGoal  ? `${lbl(+mazeGoal.dataset.r)}${+mazeGoal.dataset.c+1}`  : '—';
+      document.getElementById('mzRoad').textContent  = mazeCells.filter(c => c.classList.contains('road')).length;
+    }
+
+    // BFSで経路を取得（スタート→ゴールの順の [r,c] 配列を返す）
+    function getBFSPath() {
+      if (!mazeStart || !mazeGoal) return null;
+      const sr = +mazeStart.dataset.r, sc = +mazeStart.dataset.c;
+      const gr = +mazeGoal.dataset.r,  gc = +mazeGoal.dataset.c;
+
+      const visited = {};
+      const queue = [[sr, sc]];
+      visited[`${sr},${sc}`] = null;
+
+      while (queue.length) {
+        const [r, c] = queue.shift();
+        if (r === gr && c === gc) break;
+        for (const [nr, nc] of [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]) {
+          if (nr<0||nr>=ROWS||nc<0||nc>=COLS) continue;
+          const key = `${nr},${nc}`;
+          if (key in visited) continue;
+          const nb = getCell(nr, nc);
+          if (!nb.classList.contains('road') && !nb.classList.contains('goal')) continue;
+          visited[key] = `${r},${c}`;
+          queue.push([nr, nc]);
+        }
+      }
+
+      if (!(`${gr},${gc}` in visited)) return null;
+
+      const path = [];
+      let cur = `${gr},${gc}`;
+      while (cur !== null) {
+        const [r, c] = cur.split(',').map(Number);
+        path.unshift([r, c]);
+        cur = visited[cur];
+      }
+      return path;
+    }
+
+    function showToast(msg, isOk = false) {
+      toast.textContent = msg;
+      toast.classList.toggle('ok', isOk);
+    }
+
+    // 適用ボタン
+    document.getElementById('mazeApplyBtn').addEventListener('click', () => {
+      const path = getBFSPath();
+      if (!path) {
+        showToast('スタートからゴールへ到達できません。道を繋いでください。');
+        return;
+      }
+      if (path.length < 2) {
+        showToast('経路が短すぎます。道をもっと引いてください。');
+        return;
+      }
+
+      // グリッド座標 → 3Dワールド座標に変換
+      const points = path.map(([r, c]) => ({
+        x: (c - 2) * SPACING,
+        y: 0,
+        z: (r - 2) * SPACING,
+      }));
+
+      if (typeof window.rebuildRoad === 'function') {
+        window.rebuildRoad(points);
+        showToast(`✅ 経路 ${path.length} マスで道路を生成しました`, true);
+        setTimeout(() => modal.classList.add('hidden'), 800);
+      }
+    });
+
+    // キャンセル
+    document.getElementById('mazeCancelBtn').addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    // リセット
+    document.getElementById('mazeClearBtn').addEventListener('click', () => {
+      mazeCells.forEach(c => {
+        c.classList.remove('start', 'goal', 'road');
+        c.querySelector('.maze-cell-lbl').textContent = '';
+      });
+      mazeStart = mazeGoal = null;
+      connSvg.innerHTML = '';
+      updateMazeInfo();
+      showToast('');
+    });
+
+    // 開くボタン
+    document.getElementById('maze-open-btn').addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      showToast('');
+    });
+  })();
+  </script>
 
   <script type="module" src="./src/main.js"></script>
 </body>

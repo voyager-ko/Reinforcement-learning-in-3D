@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>迷路メーカー</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d14;
+    --surface: #13131f;
+    --border: #2a2a40;
+    --accent: #00e5ff;
+    --accent2: #ff4081;
+    --accent3: #69ff47;
+    --wall: #1e1e32;
+    --path: #00e5ff22;
+    --text: #e0e0f0;
+    --muted: #666680;
+    --start-color: #69ff47;
+    --goal-color: #ff4081;
+    --road-color: #00e5ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, #00e5ff08 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 80% 80%, #ff408108 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 5vw, 2.8rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-shadow: 0 0 30px #00e5ff55;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.2em;
+    margin-bottom: 32px;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+    max-width: 600px;
+  }
+
+  /* Mode selector */
+  .mode-panel {
+    display: flex;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px;
+    width: 100%;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mode-btn .icon { font-size: 1.4rem; }
+
+  .mode-btn:hover { color: var(--text); background: #ffffff08; }
+
+  .mode-btn.active[data-mode="start"] {
+    border-color: var(--start-color);
+    color: var(--start-color);
+    background: #69ff4712;
+    box-shadow: 0 0 16px #69ff4722;
+  }
+  .mode-btn.active[data-mode="goal"] {
+    border-color: var(--goal-color);
+    color: var(--goal-color);
+    background: #ff408112;
+    box-shadow: 0 0 16px #ff408122;
+  }
+  .mode-btn.active[data-mode="road"] {
+    border-color: var(--road-color);
+    color: var(--road-color);
+    background: #00e5ff12;
+    box-shadow: 0 0 16px #00e5ff22;
+  }
+  .mode-btn.active[data-mode="erase"] {
+    border-color: #888;
+    color: #aaa;
+    background: #ffffff10;
+  }
+
+  /* Grid */
+  .grid-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 420px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 6px;
+    width: 100%;
+    height: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .cell {
+    position: relative;
+    border-radius: 8px;
+    background: var(--wall);
+    border: 2px solid #1e1e38;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  .cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .cell:hover::after { opacity: 1; background: #ffffff08; }
+  .cell:active { transform: scale(0.93); }
+
+  .cell.road {
+    background: #0a1a25;
+    border-color: var(--road-color);
+    box-shadow: 0 0 10px #00e5ff33, inset 0 0 8px #00e5ff11;
+  }
+  .cell.road::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #00e5ff18, #00e5ff06);
+  }
+
+  .cell.start {
+    background: #0a1f0a;
+    border-color: var(--start-color);
+    box-shadow: 0 0 14px #69ff4744, inset 0 0 8px #69ff4718;
+  }
+  .cell.goal {
+    background: #1f0a10;
+    border-color: var(--goal-color);
+    box-shadow: 0 0 14px #ff408144, inset 0 0 8px #ff408118;
+  }
+
+  .cell-label {
+    font-size: 0.65rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    z-index: 1;
+    position: relative;
+  }
+
+  .cell.start .cell-label { color: var(--start-color); }
+  .cell.goal .cell-label { color: var(--goal-color); }
+
+  /* Road connector lines */
+  .cell.road .connector { display: block; }
+  .connector { display: none; }
+
+  /* Path connection overlay */
+  .connections-svg {
+    position: absolute;
+    inset: 10px;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Info panel */
+  .info-panel {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .info-card .val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+  .info-card .lbl {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.08em;
+  }
+
+  .info-card.s .val { color: var(--start-color); }
+  .info-card.g .val { color: var(--goal-color); }
+  .info-card.r .val { color: var(--road-color); }
+
+  /* Buttons */
+  .actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.06em;
+  }
+
+  .btn:hover { background: #ffffff0d; border-color: #444; }
+
+  .btn.danger {
+    border-color: #ff406055;
+    color: #ff8099;
+  }
+  .btn.danger:hover { background: #ff406015; border-color: var(--goal-color); }
+
+  .btn.primary {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 12px #00e5ff22;
+  }
+  .btn.primary:hover { background: #00e5ff12; box-shadow: 0 0 20px #00e5ff33; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 700;
+    color: var(--accent);
+    box-shadow: 0 0 24px #00e5ff33;
+    transition: transform 0.3s cubic-bezier(.22,1,.36,1), opacity 0.3s;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 999;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* Hint */
+  .hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+  .hint span { color: var(--text); }
+</style>
+</head>
+<body>
+
+<h1>迷路メーカー</h1>
+<p class="subtitle">MAZE BUILDER — 5×5 GRID EDITOR</p>
+
+<div class="app">
+
+  <!-- Mode selector -->
+  <div class="mode-panel">
+    <button class="mode-btn active" data-mode="start">
+      <span class="icon">🟢</span>スタート
+    </button>
+    <button class="mode-btn" data-mode="goal">
+      <span class="icon">🔴</span>ゴール
+    </button>
+    <button class="mode-btn" data-mode="road">
+      <span class="icon">🔷</span>道を引く
+    </button>
+    <button class="mode-btn" data-mode="erase">
+      <span class="icon">🧹</span>消す
+    </button>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-container">
+    <svg class="connections-svg" id="connSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- Info -->
+  <div class="info-panel">
+    <div class="info-card s">
+      <div class="val" id="startInfo">—</div>
+      <div class="lbl">スタート</div>
+    </div>
+    <div class="info-card r">
+      <div class="val" id="roadCount">0</div>
+      <div class="lbl">道のマス数</div>
+    </div>
+    <div class="info-card g">
+      <div class="val" id="goalInfo">—</div>
+      <div class="lbl">ゴール</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn danger" id="clearBtn">全リセット</button>
+    <button class="btn primary" id="checkBtn">経路を確認</button>
+  </div>
+
+  <p class="hint">
+    <span>モードを選択</span>してマスをクリック。<br>
+    「道を引く」で連続ドラッグも可能です。
+  </p>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ROWS = 5, COLS = 5;
+let mode = 'start';
+let startCell = null, goalCell = null;
+let cells = [];
+let isDragging = false;
+
+const grid = document.getElementById('grid');
+const connSvg = document.getElementById('connSvg');
+
+// Build grid
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.r = r;
+    cell.dataset.c = c;
+    const lbl = document.createElement('span');
+    lbl.className = 'cell-label';
+    cell.appendChild(lbl);
+    grid.appendChild(cell);
+    cells.push(cell);
+  }
+}
+
+function getCell(r, c) {
+  return cells[r * COLS + c];
+}
+
+function applyCell(cell) {
+  const r = +cell.dataset.r, c = +cell.dataset.c;
+
+  if (mode === 'start') {
+    if (startCell) {
+      startCell.classList.remove('start');
+      startCell.querySelector('.cell-label').textContent = startCell.classList.contains('road') ? '' : '';
+      if (startCell.classList.contains('road')) startCell.querySelector('.cell-label').textContent = '';
+    }
+    cell.classList.remove('goal', 'road');
+    cell.classList.add('start');
+    cell.querySelector('.cell-label').textContent = 'S';
+    if (goalCell === cell) goalCell = null;
+    startCell = cell;
+    updateInfo();
+  } else if (mode === 'goal') {
+    if (goalCell) {
+      goalCell.classList.remove('goal');
+      goalCell.querySelector('.cell-label').textContent = goalCell.classList.contains('road') ? '' : '';
+      if (goalCell.classList.contains('road')) goalCell.querySelector('.cell-label').textContent = '';
+    }
+    cell.classList.remove('start', 'road');
+    cell.classList.add('goal');
+    cell.querySelector('.cell-label').textContent = 'G';
+    if (startCell === cell) startCell = null;
+    goalCell = cell;
+    updateInfo();
+  } else if (mode === 'road') {
+    if (cell.classList.contains('start') || cell.classList.contains('goal')) return;
+    cell.classList.add('road');
+    cell.querySelector('.cell-label').textContent = '';
+    updateInfo();
+  } else if (mode === 'erase') {
+    if (cell === startCell) { startCell = null; }
+    if (cell === goalCell) { goalCell = null; }
+    cell.classList.remove('start', 'goal', 'road');
+    cell.querySelector('.cell-label').textContent = '';
+    updateInfo();
+  }
+
+  drawConnections();
+}
+
+// Mode buttons
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Cell events
+cells.forEach(cell => {
+  cell.addEventListener('mousedown', e => {
+    e.preventDefault();
+    isDragging = true;
+    applyCell(cell);
+  });
+  cell.addEventListener('mouseenter', () => {
+    if (isDragging && (mode === 'road' || mode === 'erase')) {
+      applyCell(cell);
+    }
+  });
+  cell.addEventListener('touchstart', e => {
+    e.preventDefault();
+    isDragging = true;
+    applyCell(cell);
+  }, { passive: false });
+  cell.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (el && el.classList.contains('cell') && (mode === 'road' || mode === 'erase')) {
+      applyCell(el);
+    }
+  }, { passive: false });
+});
+
+document.addEventListener('mouseup', () => isDragging = false);
+document.addEventListener('touchend', () => isDragging = false);
+
+// Draw SVG path connections between adjacent road/start/goal cells
+function drawConnections() {
+  connSvg.innerHTML = '';
+  const active = cells.filter(c =>
+    c.classList.contains('road') ||
+    c.classList.contains('start') ||
+    c.classList.contains('goal')
+  );
+
+  const cellW = 100 / COLS;
+  const cellH = 100 / ROWS;
+
+  const drawn = new Set();
+
+  active.forEach(cell => {
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    const neighbors = [
+      [r-1, c], [r+1, c], [r, c-1], [r, c+1]
+    ];
+    neighbors.forEach(([nr, nc]) => {
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return;
+      const nb = getCell(nr, nc);
+      if (!nb.classList.contains('road') && !nb.classList.contains('start') && !nb.classList.contains('goal')) return;
+      const key = [Math.min(r*COLS+c, nr*COLS+nc), Math.max(r*COLS+c, nr*COLS+nc)].join('-');
+      if (drawn.has(key)) return;
+      drawn.add(key);
+
+      const x1 = (c + 0.5) * cellW;
+      const y1 = (r + 0.5) * cellH;
+      const x2 = (nc + 0.5) * cellW;
+      const y2 = (nr + 0.5) * cellH;
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      line.setAttribute('stroke', '#00e5ff');
+      line.setAttribute('stroke-width', '2.5');
+      line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('opacity', '0.5');
+      connSvg.appendChild(line);
+    });
+  });
+}
+
+function updateInfo() {
+  const r2label = r => ['A','B','C','D','E'][r];
+  document.getElementById('startInfo').textContent = startCell
+    ? `${r2label(+startCell.dataset.r)}${+startCell.dataset.c+1}` : '—';
+  document.getElementById('goalInfo').textContent = goalCell
+    ? `${r2label(+goalCell.dataset.r)}${+goalCell.dataset.c+1}` : '—';
+  document.getElementById('roadCount').textContent =
+    cells.filter(c => c.classList.contains('road')).length;
+}
+
+// BFS path check
+function bfsCheck() {
+  if (!startCell || !goalCell) {
+    showToast('⚠️ スタートとゴールを設定してください');
+    return;
+  }
+  const sr = +startCell.dataset.r, sc = +startCell.dataset.c;
+  const gr = +goalCell.dataset.r, gc = +goalCell.dataset.c;
+  const visited = new Set();
+  const queue = [[sr, sc]];
+  visited.add(`${sr},${sc}`);
+
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    if (r === gr && c === gc) {
+      highlightPath(sr, sc, gr, gc);
+      showToast('✅ スタートからゴールへ到達可能！');
+      return;
+    }
+    [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([nr,nc]) => {
+      if (nr<0||nr>=ROWS||nc<0||nc>=COLS) return;
+      const key = `${nr},${nc}`;
+      if (visited.has(key)) return;
+      const nb = getCell(nr, nc);
+      if (!nb.classList.contains('road') && !nb.classList.contains('goal')) return;
+      visited.add(key);
+      queue.push([nr, nc]);
+    });
+  }
+  showToast('❌ ゴールに到達できません');
+}
+
+function highlightPath(sr, sc, gr, gc) {
+  // BFS with parent tracking
+  const visited = {};
+  const queue = [[sr, sc]];
+  visited[`${sr},${sc}`] = null;
+
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    if (r === gr && c === gc) break;
+    [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([nr,nc]) => {
+      if (nr<0||nr>=ROWS||nc<0||nc>=COLS) return;
+      const key = `${nr},${nc}`;
+      if (key in visited) return;
+      const nb = getCell(nr, nc);
+      if (!nb.classList.contains('road') && !nb.classList.contains('goal')) return;
+      visited[key] = `${r},${c}`;
+      queue.push([nr, nc]);
+    });
+  }
+
+  // Trace back
+  const path = new Set();
+  let cur = `${gr},${gc}`;
+  while (cur && cur !== `${sr},${sc}`) {
+    path.add(cur);
+    cur = visited[cur];
+  }
+  path.add(`${sr},${sc}`);
+
+  // Flash highlight
+  cells.forEach(cell => {
+    const key = `${cell.dataset.r},${cell.dataset.c}`;
+    if (path.has(key)) {
+      cell.style.transition = 'box-shadow 0.2s';
+      cell.style.boxShadow = '0 0 24px #00e5ffaa, inset 0 0 12px #00e5ff44';
+      setTimeout(() => { cell.style.boxShadow = ''; cell.style.transition = ''; }, 1600);
+    }
+  });
+}
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  cells.forEach(c => {
+    c.classList.remove('start', 'goal', 'road');
+    c.querySelector('.cell-label').textContent = '';
+  });
+  startCell = null;
+  goalCell = null;
+  connSvg.innerHTML = '';
+  updateInfo();
+  showToast('🔄 リセットしました');
+});
+
+document.getElementById('checkBtn').addEventListener('click', bfsCheck);
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
