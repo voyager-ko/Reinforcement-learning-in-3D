@@ -28,7 +28,6 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 let camera_controller = new CameraController();
 
 // 平行光源を作成
-// new THREE.DirectionalLight(色, 光の強さ)
 const light = new THREE.DirectionalLight(0xFFFFFF, 3);
 scene.add(light);
 
@@ -95,21 +94,119 @@ const learningUI = new LearningStatusUI({
   title: "ロボット学習状況",
 });
 
+// 車のカラーパレット (最大8台分)
+const CAR_COLORS = [
+  0xffd166,
+  0xff6b9d,
+  0x6bd4ff,
+  0xa8ff6b,
+  0xff9f6b,
+  0xd06bff,
+  0xff6b6b,
+  0x6bffe8,
+];
 
-const robot = new Robot({
-  startPosition: drawingRoad.getStartPoint(),
-  startHeading: 0,
+let agents = [];
+let robots = [];
+const sharedQTable = new Map();
+
+function buildAgents(count, alpha, gamma, keepTable = false) {
+  robots.forEach(r => scene.remove(r.getObject3D()));
+  agents = [];
+  robots = [];
+  if (!keepTable) {
+    sharedQTable.clear();
+  }
+
+  for (let i = 0; i < count; i++) {
+    const robot = new Robot({
+      startPosition: drawingRoad.getStartPoint(),
+      startHeading: 0,
+      materials: {
+        body: new THREE.MeshStandardMaterial({
+          color: CAR_COLORS[i % CAR_COLORS.length],
+          roughness: 0.5,
+          metalness: 0.25,
+        }),
+      },
+    });
+    scene.add(robot.getObject3D());
+
+    const agent = new ReinforcementLearningAgent({
+      robot: robot.getStateObject(),
+      robotGroup: robot.getObject3D(),
+      road: drawingRoad,
+      qTable: sharedQTable,
+      alpha,
+      gamma,
+    });
+
+    robots.push(robot);
+    agents.push(agent);
+    agent.start();
+  }
+}
+
+function getAggregatedInfo() {
+  if (agents.length === 0) return {};
+  const infos = agents.map(a => a.getLearningInfo());
+  return {
+    episode:      infos.reduce((s, i) => s + i.episode, 0),
+    success:      infos.reduce((s, i) => s + i.success, 0),
+    failures:     infos.reduce((s, i) => s + i.failures, 0),
+    epsilon:      infos.reduce((s, i) => s + i.epsilon, 0) / infos.length,
+    totalReward:  infos.reduce((s, i) => s + i.totalReward, 0),
+    lastReward:   infos.reduce((s, i) => s + i.lastReward, 0) / infos.length,
+    step:         infos.reduce((s, i) => s + i.step, 0),
+    progress:     Math.max(...infos.map(i => i.progress)),
+    bestProgress: Math.max(...infos.map(i => i.bestProgress)),
+    successRate:  infos.reduce((s, i) => s + i.successRate, 0) / infos.length,
+    qTableSize:   infos[0].qTableSize,
+    carCount:     agents.length,
+  };
+}
+
+function readSettings() {
+  return {
+    count: parseInt(document.getElementById("setting-car-count").value, 10),
+    alpha: parseFloat(document.getElementById("setting-alpha").value),
+    gamma: parseFloat(document.getElementById("setting-gamma").value),
+  };
+}
+
+let isTestMode = false;
+
+function setTestMode(enabled) {
+  isTestMode = enabled;
+  agents.forEach(a => a.setTestMode(enabled));
+  const btn = document.getElementById("mode-toggle");
+  if (enabled) {
+    btn.textContent = "テストモード中（クリックで学習に戻す）";
+    btn.classList.replace("mode-training", "mode-test");
+  } else {
+    btn.textContent = "学習モード中（クリックでテストへ）";
+    btn.classList.replace("mode-test", "mode-training");
+  }
+}
+
+document.getElementById("mode-toggle").addEventListener("click", () => {
+  setTestMode(!isTestMode);
 });
 
-scene.add(robot.getObject3D());
+// 初期構築
+buildAgents(1, 0.12, 0.97);
 
-
-const agent = new ReinforcementLearningAgent({
-  robot: robot.getStateObject(),
-  robotGroup: robot.getObject3D(),
-  road: drawingRoad,
+// 台数・設定を変更（学習を引き継ぐ）
+document.getElementById("settings-apply").addEventListener("click", () => {
+  const { count, alpha, gamma } = readSettings();
+  buildAgents(count, alpha, gamma, true);
 });
 
+// 学習をリセットして再スタート
+document.getElementById("settings-reset").addEventListener("click", () => {
+  const { count, alpha, gamma } = readSettings();
+  buildAgents(count, alpha, gamma, false);
+});
 
 
 window.addEventListener("mousedown", (event) =>{
@@ -138,19 +235,14 @@ window.addEventListener("keyup", (event) => {
 
 
 //// 開始！！
-agent.start();
-// 毎フレーム時に実行されるループイベントです
 function tick() {
-    // 毎フレーム学習を1ステップ進める
     renderer.render(scene, camera);
 
-
-    // update
     if(camera_controller.isKeyDonw === true){
       camera_controller.keyMove(keys);
-    } 
-    agent.update();
-    learningUI.update(agent.getLearningInfo());
+    }
+    agents.forEach(agent => agent.update());
+    learningUI.update(getAggregatedInfo());
     camera_controller.update(camera);
 }
 

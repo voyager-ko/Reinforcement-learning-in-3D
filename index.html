@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  
+
   <title>Hand Skeleton</title>
 
   <script type="importmap">
@@ -25,11 +25,152 @@
         canvas {
           display: block;
         }
+
+        #settings-panel {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          width: 260px;
+          padding: 16px;
+          border-radius: 14px;
+          background: rgba(20, 24, 28, 0.86);
+          color: #ffffff;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+          z-index: 1000;
+          backdrop-filter: blur(8px);
+        }
+
+        #settings-panel h2 {
+          font-size: 16px;
+          margin: 0 0 14px 0;
+          font-weight: 700;
+        }
+
+        .setting-row {
+          margin-bottom: 14px;
+        }
+
+        .setting-label {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13px;
+          margin-bottom: 6px;
+        }
+
+        .setting-label span:first-child {
+          color: rgba(255, 255, 255, 0.72);
+        }
+
+        .setting-value {
+          font-weight: 700;
+          color: #61d7ff;
+          min-width: 36px;
+          text-align: right;
+        }
+
+        .setting-row input[type="range"] {
+          width: 100%;
+          accent-color: #61d7ff;
+          cursor: pointer;
+        }
+
+        .settings-btn {
+          width: 100%;
+          margin-top: 8px;
+          padding: 10px 0;
+          border: none;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.15s;
+          font-family: inherit;
+        }
+
+        #settings-apply {
+          background: rgba(97, 215, 255, 0.18);
+          color: #61d7ff;
+        }
+
+        #settings-apply:hover  { background: rgba(97, 215, 255, 0.32); }
+        #settings-apply:active { background: rgba(97, 215, 255, 0.48); }
+
+        #settings-reset {
+          background: rgba(255, 92, 107, 0.14);
+          color: #ff5c6b;
+        }
+
+        #settings-reset:hover  { background: rgba(255, 92, 107, 0.26); }
+        #settings-reset:active { background: rgba(255, 92, 107, 0.42); }
+
+        #mode-toggle {
+          width: 100%;
+          padding: 11px 0;
+          border: none;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+          font-family: inherit;
+          margin-bottom: 14px;
+        }
+
+        #mode-toggle.mode-training {
+          background: rgba(92, 242, 173, 0.15);
+          color: #5cf2ad;
+        }
+
+        #mode-toggle.mode-training:hover { background: rgba(92, 242, 173, 0.28); }
+
+        #mode-toggle.mode-test {
+          background: rgba(246, 211, 95, 0.18);
+          color: #f6d35f;
+        }
+
+        #mode-toggle.mode-test:hover { background: rgba(246, 211, 95, 0.32); }
     </style>
 </head>
 <body>
   <div class="camera-area">
   <canvas id="canvas"></canvas>
+  </div>
+
+  <div id="settings-panel">
+    <h2>学習設定</h2>
+    <button id="mode-toggle" class="mode-training">学習モード中（クリックでテストへ）</button>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>台数</span>
+        <span class="setting-value" id="val-car-count">1</span>
+      </div>
+      <input type="range" id="setting-car-count" min="1" max="8" value="1" step="1"
+        oninput="document.getElementById('val-car-count').textContent = this.value">
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>学習率 α</span>
+        <span class="setting-value" id="val-alpha">0.12</span>
+      </div>
+      <input type="range" id="setting-alpha" min="0.01" max="0.5" value="0.12" step="0.01"
+        oninput="document.getElementById('val-alpha').textContent = parseFloat(this.value).toFixed(2)">
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>割引率 γ</span>
+        <span class="setting-value" id="val-gamma">0.97</span>
+      </div>
+      <input type="range" id="setting-gamma" min="0.5" max="0.99" value="0.97" step="0.01"
+        oninput="document.getElementById('val-gamma').textContent = parseFloat(this.value).toFixed(2)">
+    </div>
+
+    <button id="settings-apply" class="settings-btn">台数・設定を変更（学習を引き継ぐ）</button>
+    <button id="settings-reset"  class="settings-btn">学習をリセットして再スタート</button>
   </div>
 
   <script type="module" src="./src/main.js"></script>

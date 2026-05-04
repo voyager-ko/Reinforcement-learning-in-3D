@@ -10,6 +10,9 @@ export class ReinforcementLearningAgent {
     road,
     onEpisodeEnd = null,
     onStep = null,
+    qTable = null,
+    alpha = 0.12,
+    gamma = 0.97,
   }) {
     this.robot = robot;
     this.robotGroup = robotGroup;
@@ -20,9 +23,9 @@ export class ReinforcementLearningAgent {
 
     // ===== 強化学習の基本設定 =====
     this.robotRadius = 0.34;
-    this.stepDistance = 2.2;
+    this.stepDistance = 0.5;
     this.turnAmount = 0.115;
-    this.maxSteps = 1050;
+    this.maxSteps = 1600;
     this.goalProgress = 0.985;
 
     // 行動
@@ -34,11 +37,12 @@ export class ReinforcementLearningAgent {
 
     // Q学習パラメータ
     this.epsilon = 1.0;
-    this.alpha = 0.35;
-    this.gamma = 0.88;
+    this.alpha = alpha;
+    this.gamma = gamma;
 
-    // 学習状態
-    this.qTable = new Map();
+    // 学習状態 (qTableが渡された場合は共有、なければ独自に作成)
+    this.ownsQTable = qTable === null;
+    this.qTable = qTable ?? new Map();
 
     this.episode = 0;
     this.success = 0;
@@ -53,7 +57,12 @@ export class ReinforcementLearningAgent {
 
     this.recentResults = [];
 
+    this.testMode = false;
     this.running = false;
+  }
+
+  setTestMode(enabled) {
+    this.testMode = enabled;
   }
 
   start() {
@@ -78,7 +87,9 @@ export class ReinforcementLearningAgent {
     this.previousProgress = 0;
     this.bestProgress = 0;
 
-    this.qTable.clear();
+    if (this.ownsQTable) {
+      this.qTable.clear();
+    }
     this.recentResults = [];
 
     this.startEpisode();
@@ -116,9 +127,12 @@ export class ReinforcementLearningAgent {
       this.recentResults.shift();
     }
 
-    // 学習が進むにつれてランダム行動を少しずつ減らす
-    const epsilonDecay = result === "success" ? 0.985 : 0.995;
-    this.epsilon = Math.max(0.045, this.epsilon * epsilonDecay);
+    if (!this.testMode) {
+      // 成功/失敗とエピソード数の両方でepsilonを減衰させる
+      const resultDecay = result === "success" ? 0.985 : 0.995;
+      const timeFloor = Math.max(0.045, 1.0 / (1 + this.episode * 0.005));
+      this.epsilon = Math.min(this.epsilon * resultDecay, timeFloor);
+    }
 
     if (this.onEpisodeEnd) {
       this.onEpisodeEnd({
@@ -242,16 +256,16 @@ export class ReinforcementLearningAgent {
     let reward = 0;
 
     // 前に進んだら報酬
-    reward += progressDelta * 52;
+    reward += progressDelta * 30;
 
     // 中心線に近いほど報酬
-    reward += centerScore * 1.8;
+    reward += centerScore * 4.0;
 
     // 道の向きとロボットの向きが近いほど報酬
-    reward += alignmentScore * 0.18;
+    reward += alignmentScore * 2.0;
 
     // 向きがずれているほど少し減点
-    reward -= headingError * 0.055;
+    reward -= headingError * 0.3;
 
     // 1ステップごとに少し減点
     reward -= 0.018;
@@ -303,27 +317,28 @@ export class ReinforcementLearningAgent {
   }
 
   chooseAction(state) {
-    // epsilon の確率でランダム行動
-    if (Math.random() < this.epsilon) {
-      return Math.floor(Math.random() * this.actions.length);
+    // テストモード中またはepsilonを下回った場合はQ値が最大の行動を選ぶ
+    if (this.testMode || Math.random() >= this.epsilon) {
+      const values = this.getQValues(state);
+      const max = Math.max(...values);
+
+      const bestActions = [];
+
+      values.forEach((value, index) => {
+        if (value === max) {
+          bestActions.push(index);
+        }
+      });
+
+      return bestActions[Math.floor(Math.random() * bestActions.length)];
     }
 
-    // それ以外はQ値が最大の行動を選ぶ
-    const values = this.getQValues(state);
-    const max = Math.max(...values);
-
-    const bestActions = [];
-
-    values.forEach((value, index) => {
-      if (value === max) {
-        bestActions.push(index);
-      }
-    });
-
-    return bestActions[Math.floor(Math.random() * bestActions.length)];
+    return Math.floor(Math.random() * this.actions.length);
   }
 
   updateQ(state, actionIndex, reward, nextState, terminal) {
+    if (this.testMode) return;
+
     const values = this.getQValues(state);
     const nextValues = this.getQValues(nextState);
 
@@ -375,13 +390,7 @@ export class ReinforcementLearningAgent {
       8
     );
 
-    const goalBin = this.clamp(
-      Math.floor((1 - info.progress) * 7),
-      0,
-      6
-    );
-
-    return `${progressBin}:${offsetBin}:${angleBin}:${goalBin}`;
+    return `${progressBin}:${offsetBin}:${angleBin}`;
   }
 
   nearestRouteInfo(position) {

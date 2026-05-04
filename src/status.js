@@ -40,6 +40,7 @@ export class LearningStatusUI {
     this.elements.status = this.createStatusText("学習中");
     container.appendChild(this.elements.status);
 
+    this.elements.carCount = this.createRow(container, "台数", "1");
     this.elements.episode = this.createRow(container, "試行回数", "0");
     this.elements.success = this.createRow(container, "成功回数", "0");
     this.elements.failures = this.createRow(container, "失敗回数", "0");
@@ -135,6 +136,7 @@ export class LearningStatusUI {
   }
 
   update(info) {
+    this.elements.carCount.textContent = String(info.carCount ?? 1);
     this.elements.episode.textContent = String(info.episode ?? 0);
     this.elements.success.textContent = String(info.success ?? 0);
     this.elements.failures.textContent = String(info.failures ?? 0);
