@@ -63,6 +63,31 @@ const goalMaterial = new THREE.MeshStandardMaterial({
 let drawingRoad = null;
 let roadGroup = null;
 
+function resetCameraForRoad() {
+  const samples = drawingRoad.getCenterSamples();
+  let minX = Infinity, maxX = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  samples.forEach(p => {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.z < minZ) minZ = p.z;
+    if (p.z > maxZ) maxZ = p.z;
+  });
+  const centerX = (minX + maxX) / 2;
+  const centerZ = (minZ + maxZ) / 2;
+  const margin = 1.5;
+  const roadHalf = drawingRoad.getRoadHalf();
+  const extentX = (maxX - minX) + roadHalf * 2;
+  const extentZ = (maxZ - minZ) + roadHalf * 2;
+  const fovRad = 75 * Math.PI / 180;
+  const tanHalfFov = Math.tan(fovRad / 2);
+  const aspectRatio = window.innerWidth / window.innerHeight;
+  const heightForZ = (extentZ * margin / 2) / tanHalfFov;
+  const heightForX = (extentX * margin / 2) / (tanHalfFov * aspectRatio);
+  const height = Math.max(heightForZ, heightForX);
+  camera_controller.resetToTopView(centerX, centerZ, height);
+}
+
 function buildRoad(controlPoints) {
   if (roadGroup) scene.remove(roadGroup);
 
@@ -79,6 +104,7 @@ function buildRoad(controlPoints) {
 
   roadGroup = drawingRoad.create();
   scene.add(roadGroup);
+  resetCameraForRoad();
 }
 
 // 迷路ビルダー側HTMLから呼ばれるブリッジ
@@ -92,6 +118,7 @@ window.rebuildRoad = (plainPoints) => {
 
 
 const learningUI = new LearningStatusUI({
+  parent: document.getElementById("status-mount"),
   title: "ロボット学習状況",
 });
 
@@ -110,7 +137,21 @@ let agents = [];
 let robots = [];
 const sharedQTable = new Map();
 
+let cumulativeStats = { episode: 0, success: 0, failures: 0 };
+
 function buildAgents(count, alpha, gamma, keepTable = false) {
+  let inheritedEpsilon = 1.0;
+
+  if (keepTable && agents.length > 0) {
+    const infos = agents.map(a => a.getLearningInfo());
+    cumulativeStats.episode  += infos.reduce((s, i) => s + i.episode,  0);
+    cumulativeStats.success  += infos.reduce((s, i) => s + i.success,  0);
+    cumulativeStats.failures += infos.reduce((s, i) => s + i.failures, 0);
+    inheritedEpsilon = infos.reduce((s, i) => s + i.epsilon, 0) / infos.length;
+  } else if (!keepTable) {
+    cumulativeStats = { episode: 0, success: 0, failures: 0 };
+  }
+
   robots.forEach(r => scene.remove(r.getObject3D()));
   agents = [];
   robots = [];
@@ -139,6 +180,7 @@ function buildAgents(count, alpha, gamma, keepTable = false) {
       qTable: sharedQTable,
       alpha,
       gamma,
+      initialEpsilon: inheritedEpsilon,
     });
 
     robots.push(robot);
@@ -151,9 +193,9 @@ function getAggregatedInfo() {
   if (agents.length === 0) return {};
   const infos = agents.map(a => a.getLearningInfo());
   return {
-    episode:      infos.reduce((s, i) => s + i.episode, 0),
-    success:      infos.reduce((s, i) => s + i.success, 0),
-    failures:     infos.reduce((s, i) => s + i.failures, 0),
+    episode:      infos.reduce((s, i) => s + i.episode,  0) + cumulativeStats.episode,
+    success:      infos.reduce((s, i) => s + i.success,  0) + cumulativeStats.success,
+    failures:     infos.reduce((s, i) => s + i.failures, 0) + cumulativeStats.failures,
     epsilon:      infos.reduce((s, i) => s + i.epsilon, 0) / infos.length,
     totalReward:  infos.reduce((s, i) => s + i.totalReward, 0),
     lastReward:   infos.reduce((s, i) => s + i.lastReward, 0) / infos.length,
@@ -174,25 +216,6 @@ function readSettings() {
   };
 }
 
-let isTestMode = false;
-
-function setTestMode(enabled) {
-  isTestMode = enabled;
-  agents.forEach(a => a.setTestMode(enabled));
-  const btn = document.getElementById("mode-toggle");
-  if (enabled) {
-    btn.textContent = "テストモード中（クリックで学習に戻す）";
-    btn.classList.replace("mode-training", "mode-test");
-  } else {
-    btn.textContent = "学習モード中（クリックでテストへ）";
-    btn.classList.replace("mode-test", "mode-training");
-  }
-}
-
-document.getElementById("mode-toggle").addEventListener("click", () => {
-  setTestMode(!isTestMode);
-});
-
 document.getElementById("settings-apply").addEventListener("click", () => {
   const { count, alpha, gamma } = readSettings();
   buildAgents(count, alpha, gamma, true);
@@ -204,7 +227,10 @@ document.getElementById("settings-reset").addEventListener("click", () => {
 });
 
 
+const drawer = document.getElementById("side-drawer");
+
 window.addEventListener("mousedown", (event) =>{
+  if (event.target.closest("#side-drawer")) return;
   camera_controller.isMouseDonw = true;
   camera_controller.ex_mouseX = event.pageX;
   camera_controller.ex_mouseY = event.pageY;
@@ -219,11 +245,13 @@ window.addEventListener("mousemove", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  if (document.activeElement && document.activeElement.closest("#side-drawer")) return;
   camera_controller.isKeyDonw = true;
   keys[event.key.toLowerCase()] = true;
 });
 
 window.addEventListener("keyup", (event) => {
+  if (document.activeElement && document.activeElement.closest("#side-drawer")) return;
   camera_controller.isKeyDonw = false;
   keys[event.key.toLowerCase()] = false;
 });

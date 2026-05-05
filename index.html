@@ -20,23 +20,124 @@
     }
     canvas { display: block; }
 
-    /* ===== 設定パネル ===== */
-    #settings-panel {
+    /* ===== ハンバーガーボタン ===== */
+    #menu-btn {
       position: fixed;
-      top: 20px; right: 20px;
-      width: 260px;
-      padding: 16px;
-      border-radius: 14px;
-      background: rgba(20, 24, 28, 0.86);
-      color: #ffffff;
+      top: 18px; right: 18px;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: rgba(28, 32, 46, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.10);
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: repeat(3, 7px);
+      grid-template-rows: repeat(3, 7px);
+      gap: 4px;
+      align-content: center;
+      justify-content: center;
+      z-index: 300;
+      box-shadow: 0 4px 22px rgba(0,0,0,0.5);
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    #menu-btn:hover {
+      background: rgba(50, 58, 84, 0.96);
+      transform: scale(1.07);
+      box-shadow: 0 6px 28px rgba(0,0,0,0.6);
+    }
+    #menu-btn .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.82);
+      transition: background 0.15s;
+    }
+    #menu-btn:hover .dot { background: #61d7ff; }
+
+    /* ===== バックドロップ ===== */
+    #drawer-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0);
+      z-index: 240;
+      pointer-events: none;
+      transition: background 0.28s;
+    }
+    #drawer-backdrop.visible {
+      background: rgba(0,0,0,0.45);
+      pointer-events: all;
+    }
+
+    /* ===== サイドドロワー ===== */
+    #side-drawer {
+      position: fixed;
+      top: 0; right: 0;
+      width: 292px;
+      height: 100vh;
+      background: rgba(11, 13, 20, 0.97);
+      backdrop-filter: blur(18px);
+      border-left: 1px solid rgba(255,255,255,0.07);
+      z-index: 260;
+      transform: translateX(100%);
+      transition: transform 0.30s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -10px 0 40px rgba(0,0,0,0.55);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-      z-index: 100;
-      backdrop-filter: blur(8px);
+      color: #ffffff;
     }
-    #settings-panel h2 {
-      font-size: 16px; margin: 0 0 14px 0; font-weight: 700;
+    #side-drawer.open { transform: translateX(0); }
+
+    /* スクロールバー */
+    #side-drawer::-webkit-scrollbar { width: 4px; }
+    #side-drawer::-webkit-scrollbar-track { background: transparent; }
+    #side-drawer::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+    /* ドロワーヘッダー */
+    .drawer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+      position: sticky; top: 0;
+      background: rgba(11, 13, 20, 0.97);
+      backdrop-filter: blur(18px);
+      z-index: 1;
     }
+    .drawer-header-title {
+      font-size: 14px; font-weight: 700;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.04em;
+    }
+    #drawer-close {
+      background: none; border: none;
+      color: rgba(255,255,255,0.4);
+      font-size: 22px; line-height: 1;
+      cursor: pointer; padding: 2px 6px;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    #drawer-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+    /* ドロワー内セクション */
+    .drawer-section {
+      padding: 18px 18px 0;
+    }
+    .drawer-section:last-child { padding-bottom: 24px; }
+
+    .section-divider {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.10em;
+      color: rgba(255,255,255,0.30);
+      margin: 0 0 14px 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .section-divider:first-child { padding-top: 0; border-top: none; }
+
+    /* ===== ステータスエリア（status.jsが描画） ===== */
+    #status-mount { /* status.js が appendChild する先 */ }
+
+    /* ===== 設定パネル内スタイル ===== */
     .setting-row { margin-bottom: 14px; }
     .setting-label {
       display: flex; justify-content: space-between; align-items: center;
@@ -58,18 +159,6 @@
     #settings-reset  { background: rgba(255,92,107,0.14); color: #ff5c6b; }
     #settings-reset:hover  { background: rgba(255,92,107,0.26); }
     #settings-reset:active { background: rgba(255,92,107,0.42); }
-
-    #mode-toggle {
-      width: 100%; padding: 11px 0;
-      border: none; border-radius: 10px;
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-      font-family: inherit; margin-bottom: 14px;
-    }
-    #mode-toggle.mode-training { background: rgba(92,242,173,0.15); color: #5cf2ad; }
-    #mode-toggle.mode-training:hover { background: rgba(92,242,173,0.28); }
-    #mode-toggle.mode-test { background: rgba(246,211,95,0.18); color: #f6d35f; }
-    #mode-toggle.mode-test:hover { background: rgba(246,211,95,0.32); }
 
     #maze-open-btn {
       width: 100%; margin-top: 8px; padding: 10px 0;
@@ -105,7 +194,6 @@
       color: #00e5ff;
     }
 
-    /* モードボタン */
     .maze-modes {
       display: flex; gap: 8px; margin-bottom: 16px;
     }
@@ -125,7 +213,6 @@
     .maze-mode-btn.active[data-mode="road"]  { border-color: #00e5ff; color: #00e5ff; background: #00e5ff12; }
     .maze-mode-btn.active[data-mode="erase"] { border-color: #888;    color: #aaa;    background: #ffffff10; }
 
-    /* グリッド */
     .maze-grid-wrap {
       position: relative;
       aspect-ratio: 1;
@@ -168,7 +255,6 @@
     .maze-cell.start .maze-cell-lbl { color: #69ff47; }
     .maze-cell.goal  .maze-cell-lbl { color: #ff4081; }
 
-    /* 情報 */
     .maze-info {
       display: flex; gap: 8px; margin-bottom: 16px;
     }
@@ -187,7 +273,6 @@
     .maze-info-card.r .mv { color: #00e5ff; }
     .maze-info-card.g .mv { color: #ff4081; }
 
-    /* アクションボタン */
     .maze-actions { display: flex; gap: 8px; }
     .maze-btn {
       flex: 1; padding: 11px;
@@ -205,7 +290,6 @@
     .maze-btn.cancel { border-color: #ff406055; color: #ff8099; }
     .maze-btn.cancel:hover { background: #ff406015; }
 
-    /* トースト */
     .maze-toast {
       margin-top: 12px;
       padding: 10px 14px;
@@ -224,42 +308,66 @@
 <body>
   <canvas id="canvas"></canvas>
 
-  <!-- ===== 設定パネル ===== -->
-  <div id="settings-panel">
-    <h2>学習設定</h2>
+  <!-- ===== ハンバーガーボタン ===== -->
+  <button id="menu-btn" aria-label="メニューを開く">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+  </button>
 
-    <button id="mode-toggle" class="mode-training">学習モード中（クリックでテストへ）</button>
+  <!-- ===== バックドロップ ===== -->
+  <div id="drawer-backdrop"></div>
 
-    <div class="setting-row">
-      <div class="setting-label">
-        <span>台数</span>
-        <span class="setting-value" id="val-car-count">1</span>
-      </div>
-      <input type="range" id="setting-car-count" min="1" max="8" value="1" step="1"
-        oninput="document.getElementById('val-car-count').textContent = this.value">
+  <!-- ===== サイドドロワー ===== -->
+  <div id="side-drawer">
+
+    <div class="drawer-header">
+      <span class="drawer-header-title">MENU</span>
+      <button id="drawer-close">×</button>
     </div>
 
-    <div class="setting-row">
-      <div class="setting-label">
-        <span>学習率 α</span>
-        <span class="setting-value" id="val-alpha">0.12</span>
-      </div>
-      <input type="range" id="setting-alpha" min="0.01" max="0.5" value="0.12" step="0.01"
-        oninput="document.getElementById('val-alpha').textContent = parseFloat(this.value).toFixed(2)">
+    <!-- 学習状況セクション -->
+    <div class="drawer-section">
+      <div class="section-divider">ロボット学習状況</div>
+      <div id="status-mount"></div>
     </div>
 
-    <div class="setting-row">
-      <div class="setting-label">
-        <span>割引率 γ</span>
-        <span class="setting-value" id="val-gamma">0.97</span>
+    <!-- 学習設定セクション -->
+    <div class="drawer-section">
+      <div class="section-divider">学習設定</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>台数</span>
+          <span class="setting-value" id="val-car-count">1</span>
+        </div>
+        <input type="range" id="setting-car-count" min="1" max="16" value="1" step="1"
+          oninput="document.getElementById('val-car-count').textContent = this.value">
       </div>
-      <input type="range" id="setting-gamma" min="0.5" max="0.99" value="0.97" step="0.01"
-        oninput="document.getElementById('val-gamma').textContent = parseFloat(this.value).toFixed(2)">
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>学習率 α</span>
+          <span class="setting-value" id="val-alpha">0.12</span>
+        </div>
+        <input type="range" id="setting-alpha" min="0.01" max="0.5" value="0.12" step="0.01"
+          oninput="document.getElementById('val-alpha').textContent = parseFloat(this.value).toFixed(2)">
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>割引率 γ</span>
+          <span class="setting-value" id="val-gamma">0.97</span>
+        </div>
+        <input type="range" id="setting-gamma" min="0.5" max="0.99" value="0.97" step="0.01"
+          oninput="document.getElementById('val-gamma').textContent = parseFloat(this.value).toFixed(2)">
+      </div>
+
+      <button id="settings-apply" class="settings-btn">台数・設定を変更（学習を引き継ぐ）</button>
+      <button id="settings-reset"  class="settings-btn">学習をリセットして再スタート</button>
+      <button id="maze-open-btn">迷路を設定</button>
     </div>
 
-    <button id="settings-apply" class="settings-btn">台数・設定を変更（学習を引き継ぐ）</button>
-    <button id="settings-reset"  class="settings-btn">学習をリセットして再スタート</button>
-    <button id="maze-open-btn">迷路を設定</button>
   </div>
 
   <!-- ===== 迷路モーダル ===== -->
@@ -297,8 +405,30 @@
 
   <script>
   (() => {
+    // ===== ドロワー開閉 =====
+    const menuBtn  = document.getElementById('menu-btn');
+    const drawer   = document.getElementById('side-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+    const closeBtn = document.getElementById('drawer-close');
+
+    function openDrawer() {
+      drawer.classList.add('open');
+      backdrop.classList.add('visible');
+    }
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      backdrop.classList.remove('visible');
+    }
+
+    menuBtn.addEventListener('click', () => {
+      drawer.classList.contains('open') ? closeDrawer() : openDrawer();
+    });
+    backdrop.addEventListener('click', closeDrawer);
+    closeBtn.addEventListener('click', closeDrawer);
+
+    // ===== 迷路 =====
     const ROWS = 5, COLS = 5;
-    const SPACING = 12; // グリッド1マス = 3Dワールド12ユニット
+    const SPACING = 12;
 
     let mazeMode = 'start';
     let mazeStart = null, mazeGoal = null;
@@ -310,7 +440,6 @@
     const connSvg = document.getElementById('mazeConnSvg');
     const toast   = document.getElementById('mazeToast');
 
-    // グリッド構築
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const cell = document.createElement('div');
@@ -362,7 +491,6 @@
       drawMazeConnections();
     }
 
-    // モードボタン
     document.querySelectorAll('.maze-mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         mazeMode = btn.dataset.mode;
@@ -371,7 +499,6 @@
       });
     });
 
-    // セルイベント
     mazeCells.forEach(cell => {
       cell.addEventListener('mousedown', e => { e.preventDefault(); isDragging = true; applyCell(cell); });
       cell.addEventListener('mouseenter', () => { if (isDragging && (mazeMode === 'road' || mazeMode === 'erase')) applyCell(cell); });
@@ -386,7 +513,6 @@
     document.addEventListener('mouseup', () => isDragging = false);
     document.addEventListener('touchend', () => isDragging = false);
 
-    // 接続線 SVG
     function drawMazeConnections() {
       connSvg.innerHTML = '';
       const active = mazeCells.filter(c => c.classList.contains('road') || c.classList.contains('start') || c.classList.contains('goal'));
@@ -422,7 +548,6 @@
       document.getElementById('mzRoad').textContent  = mazeCells.filter(c => c.classList.contains('road')).length;
     }
 
-    // BFSで経路を取得（スタート→ゴールの順の [r,c] 配列を返す）
     function getBFSPath() {
       if (!mazeStart || !mazeGoal) return null;
       const sr = +mazeStart.dataset.r, sc = +mazeStart.dataset.c;
@@ -463,7 +588,6 @@
       toast.classList.toggle('ok', isOk);
     }
 
-    // 適用ボタン
     document.getElementById('mazeApplyBtn').addEventListener('click', () => {
       const path = getBFSPath();
       if (!path) {
@@ -475,8 +599,6 @@
         return;
       }
 
-      // グリッド座標 → 3Dワールド座標に変換
-      // 直線部分は直線のまま、コーナーは CatmullRomCurve3 が自然に丸める
       const points = path.map(([r, c]) => ({
         x: (c - 2) * SPACING,
         y: 0,
@@ -490,12 +612,10 @@
       }
     });
 
-    // キャンセル
     document.getElementById('mazeCancelBtn').addEventListener('click', () => {
       modal.classList.add('hidden');
     });
 
-    // リセット
     document.getElementById('mazeClearBtn').addEventListener('click', () => {
       mazeCells.forEach(c => {
         c.classList.remove('start', 'goal', 'road');
@@ -507,7 +627,6 @@
       showToast('');
     });
 
-    // 開くボタン
     document.getElementById('maze-open-btn').addEventListener('click', () => {
       modal.classList.remove('hidden');
       showToast('');

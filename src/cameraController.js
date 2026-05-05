@@ -65,8 +65,8 @@ export class CameraController{
           this.cameraLookAt[2] -= 0.1 * Math.cos(this.theta * Math.PI / 180) * Math.cos(this.theta1 * Math.PI / 180);
       }else if(keys["a"]){
 
-          const new_theta = this.theta;
-          const new_theta1 = this.theta1;
+          const new_theta = this.theta + 90;
+          const new_theta1 = 0;
 
           this.cameraPos[0] += 0.1 * Math.sin(new_theta * Math.PI / 180) * Math.cos(new_theta1 * Math.PI / 180);
           this.cameraPos[1] += 0.1 * Math.sin((new_theta1 * Math.PI) / 180);
@@ -107,10 +107,17 @@ export class CameraController{
         console.log("theta1", this.theta1);
     }
 
+    resetToTopView(centerX, centerZ, height) {
+        this.cameraPos    = [centerX, height, centerZ];
+        this.cameraLookAt = [centerX, 0,      centerZ];
+        this.theta  = 0;
+        this.theta1 = -89;
+        this.r = height;
+    }
+
     update(camera){
-        
-        camera.lookAt(new THREE.Vector3(this.cameraLookAt[0], this.cameraLookAt[1], this.cameraLookAt[2]));
         camera.position.set(this.cameraPos[0], this.cameraPos[1], this.cameraPos[2]);
+        camera.lookAt(new THREE.Vector3(this.cameraLookAt[0], this.cameraLookAt[1], this.cameraLookAt[2]));
     }
 
 }

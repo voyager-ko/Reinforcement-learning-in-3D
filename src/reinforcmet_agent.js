@@ -13,6 +13,7 @@ export class ReinforcementLearningAgent {
     qTable = null,
     alpha = 0.12,
     gamma = 0.97,
+    initialEpsilon = 1.0,
   }) {
     this.robot = robot;
     this.robotGroup = robotGroup;
@@ -23,7 +24,7 @@ export class ReinforcementLearningAgent {
 
     // ===== 強化学習の基本設定 =====
     this.robotRadius = 0.34;
-    this.stepDistance = 0.5;
+    this.stepDistance = 0.2;
     this.turnAmount = 0.115;
     this.maxSteps = 1600;
     this.goalProgress = 0.985;
@@ -36,7 +37,8 @@ export class ReinforcementLearningAgent {
     this.actionNames = ["左", "直進", "右"];
 
     // Q学習パラメータ
-    this.epsilon = 1.0;
+    this.initialEpsilon = initialEpsilon;
+    this.epsilon = initialEpsilon;
     this.alpha = alpha;
     this.gamma = gamma;
 
@@ -79,7 +81,7 @@ export class ReinforcementLearningAgent {
     this.success = 0;
     this.failures = 0;
 
-    this.epsilon = 1.0;
+    this.epsilon = this.initialEpsilon;
     this.totalReward = 0;
     this.lastReward = 0;
 

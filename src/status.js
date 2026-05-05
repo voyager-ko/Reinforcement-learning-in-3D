@@ -15,19 +15,9 @@ export class LearningStatusUI {
   createContainer() {
     const container = document.createElement("div");
 
-    container.style.position = "fixed";
-    container.style.top = "20px";
-    container.style.left = "20px";
-    container.style.width = "280px";
-    container.style.padding = "16px";
-    container.style.borderRadius = "14px";
-    container.style.background = "rgba(20, 24, 28, 0.86)";
     container.style.color = "#ffffff";
     container.style.fontFamily =
       "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
-    container.style.boxShadow = "0 10px 30px rgba(0, 0, 0, 0.35)";
-    container.style.zIndex = "1000";
-    container.style.backdropFilter = "blur(8px)";
 
     const titleElement = document.createElement("h2");
     titleElement.textContent = this.title;
