@@ -21,6 +21,31 @@ Three.js（WebGPU）を使って3D空間上でロボット（車）が**Q学習*
 
 ---
 
+## 技術スタック
+
+| 項目 | パッケージ / バージョン |
+|---|---|
+| レンダラー | [three](https://threejs.org/) **0.184.0**（WebGPU Renderer） |
+| ビルドツール | [vite](https://vitejs.dev/) **8.0.10** |
+| アルゴリズム | Tabular Q-Learning（表形式Q学習） |
+| 道路生成 | CatmullRomCurve3 によるスプライン補間 |
+| 言語 | JavaScript（ES Modules） |
+
+---
+
+## 動作確認環境
+
+| ツール | バージョン |
+|---|---|
+| Node.js | **v24.15.0** |
+| npm | **11.12.1** |
+| three | 0.184.0 |
+| vite | 8.0.10 |
+
+> Node.js のバージョン管理には [nvm](https://github.com/nvm-sh/nvm)（macOS / Linux）または [nvm-windows](https://github.com/coreybutler/nvm-windows)（Windows）を推奨します。
+
+---
+
 ## セットアップ・起動方法
 
 ```bash
@@ -30,6 +55,8 @@ npm install
 # 開発サーバーの起動
 npm run dev
 ```
+
+ブラウザで `http://localhost:5173` を開くと動作します。
 
 > **補足:** Three.js は `package.json` の `dependencies` に含まれているため、  
 > `npm install` を実行するだけで自動的にインストールされます。  
