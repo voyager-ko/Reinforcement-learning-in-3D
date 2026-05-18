@@ -28,7 +28,6 @@ Three.js（WebGPU）を使って3D空間上でロボット（車）が**Q学習*
 | Node.js | **v24.15.0** |
 | npm | **11.12.1** |
 | three | 0.184.0 |
-| vite | 8.0.10 |
 
 > Node.js のバージョン管理には [nvm](https://github.com/nvm-sh/nvm)（macOS / Linux）または [nvm-windows](https://github.com/coreybutler/nvm-windows)（Windows）を推奨します。
 
