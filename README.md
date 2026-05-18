@@ -21,18 +21,6 @@ Three.js（WebGPU）を使って3D空間上でロボット（車）が**Q学習*
 
 ---
 
-## 技術スタック
-
-| 項目 | パッケージ / バージョン |
-|---|---|
-| レンダラー | [three](https://threejs.org/) **0.184.0**（WebGPU Renderer） |
-| ビルドツール | [vite](https://vitejs.dev/) **8.0.10** |
-| アルゴリズム | Tabular Q-Learning（表形式Q学習） |
-| 道路生成 | CatmullRomCurve3 によるスプライン補間 |
-| 言語 | JavaScript（ES Modules） |
-
----
-
 ## 動作確認環境
 
 | ツール | バージョン |
